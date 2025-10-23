@@ -5,7 +5,7 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from ..utils.aux_helpers import *
+from utils.aux_helpers import is_element_present, perform_login
 
 
 @pytest.fixture
@@ -18,6 +18,13 @@ def driver():
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
     
+    prefs = {
+        "credentials_enable_service": False,
+        "profile.password_manager_enabled": False,
+        "profile.password_manager_leak_detection": False
+    }
+    options.add_experimental_option("prefs", prefs)
+
     service = Service()
     driver = webdriver.Chrome(service=service, options=options)
     driver.maximize_window()
@@ -51,6 +58,29 @@ def test_login_success(driver):
     
     print("Exitoso, login exitoso completado...!")
 
+
+def test_login_fail(driver):
+    """
+    Caso de prueba: Login con credenciales inválidas.
+    Verifica que se muestra el mensaje de error.
+    """
+    driver.get("https://www.saucedemo.com/")
+
+    username_input = WebDriverWait(driver, 10).until(
+        EC.visibility_of_element_located((By.ID, "user-name"))
+    )
+
+    username_input.send_keys("invalid_user")
+    driver.find_element(By.ID, "password").send_keys("invalid_password")
+
+    driver.find_element(By.ID, "login-button").click()
+
+    error_message = WebDriverWait(driver, 10).until(
+        EC.visibility_of_element_located((By.CSS_SELECTOR, "[data-test='error']"))
+    )
+    
+    assert "Username and password do not match" in error_message.text, "El mensaje de error no es el esperado"
+    print("Exitoso, prueba de credenciales inválidas completada...!")
 
 
 def test_verify_catalog(driver):
@@ -112,3 +142,26 @@ def test_verify_cart(driver):
     assert cart_item_name == product_name, f"El producto en el carrito ({cart_item_name}) no coincide con el añadido ({product_name})"
     
     print("Exitoso, verificación del carrito completada...!")
+
+
+def test_logout(driver):
+    """
+    Caso de prueba: Cierre de sesión.
+    Verifica que el usuario pueda cerrar sesión correctamente.
+    """
+    perform_login(driver, "standard_user", "secret_sauce")
+
+    driver.find_element(By.ID, "react-burger-menu-btn").click()
+
+    logout_link = WebDriverWait(driver, 10).until(
+        EC.element_to_be_clickable((By.ID, "logout_sidebar_link"))
+    )
+    
+    logout_link.click()
+
+    WebDriverWait(driver, 10).until(
+        EC.visibility_of_element_located((By.ID, "login-button"))
+    )
+    
+    assert driver.current_url == "https://www.saucedemo.com/", "No se redirigió a la página de login después de cerrar sesión"
+    print("Exitoso, cierre de sesión completado...!")
