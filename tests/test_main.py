@@ -18,6 +18,7 @@ def driver():
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
     
+    # Para evitar la alerta de contraseña expuesta...
     prefs = {
         "credentials_enable_service": False,
         "profile.password_manager_enabled": False,
